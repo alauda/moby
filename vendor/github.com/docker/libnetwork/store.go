@@ -339,9 +339,11 @@ func (c *controller) processEndpointCreate(nmap map[string]*netWatch, ep *endpoi
 	if !c.isDistributedControl() && n.Scope() == datastore.SwarmScope && n.driverIsMultihost() {
 		return
 	}
+	networkID := n.ID()
+	endpointID := ep.ID()
 
 	c.Lock()
-	nw, ok := nmap[n.ID()]
+	nw, ok := nmap[networkID]
 	c.Unlock()
 
 	if ok {
@@ -349,12 +351,12 @@ func (c *controller) processEndpointCreate(nmap map[string]*netWatch, ep *endpoi
 		n.updateSvcRecord(ep, c.getLocalEps(nw), true)
 
 		c.Lock()
-		nw.localEps[ep.ID()] = ep
+		nw.localEps[endpointID] = ep
 
 		// If we had learned that from the kv store remove it
 		// from remote ep list now that we know that this is
 		// indeed a local endpoint
-		delete(nw.remoteEps, ep.ID())
+		delete(nw.remoteEps, endpointID)
 		c.Unlock()
 		return
 	}
@@ -370,8 +372,8 @@ func (c *controller) processEndpointCreate(nmap map[string]*netWatch, ep *endpoi
 	n.updateSvcRecord(ep, c.getLocalEps(nw), true)
 
 	c.Lock()
-	nw.localEps[ep.ID()] = ep
-	nmap[n.ID()] = nw
+	nw.localEps[endpointID] = ep
+	nmap[networkID] = nw
 	nw.stopCh = make(chan struct{})
 	c.Unlock()
 
@@ -399,11 +401,13 @@ func (c *controller) processEndpointDelete(nmap map[string]*netWatch, ep *endpoi
 		return
 	}
 
+	networkID := n.ID()
+	endpointID := ep.ID()
 	c.Lock()
-	nw, ok := nmap[n.ID()]
+	nw, ok := nmap[networkID]
 
 	if ok {
-		delete(nw.localEps, ep.ID())
+		delete(nw.localEps, endpointID)
 		c.Unlock()
 
 		// Update the svc db about local endpoint leave right away
@@ -417,9 +421,9 @@ func (c *controller) processEndpointDelete(nmap map[string]*netWatch, ep *endpoi
 
 			// This is the last container going away for the network. Destroy
 			// this network's svc db entry
-			delete(c.svcRecords, n.ID())
+			delete(c.svcRecords, networkID)
 
-			delete(nmap, n.ID())
+			delete(nmap, networkID)
 		}
 	}
 	c.Unlock()
