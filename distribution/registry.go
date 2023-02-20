@@ -100,7 +100,11 @@ func newRepository(
 	modifiers := registry.Headers(dockerversion.DockerUserAgent(ctx), metaHeaders)
 	authTransport := transport.NewTransport(base, modifiers...)
 
+	if HasProxy() {
+		authTransport = NewMixTransport(base, modifiers...)
+	}
 	challengeManager, err := registry.PingV2Registry(endpoint.URL, authTransport)
+
 	if err != nil {
 		transportOK := false
 		if responseErr, ok := err.(registry.PingResponseError); ok {
@@ -131,6 +135,9 @@ func newRepository(
 		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler))
 	}
 	tr := transport.NewTransport(base, modifiers...)
+	if HasProxy() {
+		tr = NewMixTransport(base, modifiers...)
+	}
 
 	repoNameRef, err := reference.WithName(repoName)
 	if err != nil {
