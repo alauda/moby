@@ -396,17 +396,21 @@ func (c *controller) processEndpointCreate(nmap map[string]*netWatch, ep *endpoi
 	go c.networkWatchLoop(nw, ep, ch)
 }
 
+// Fix deadlock
 func (c *controller) processEndpointDelete(nmap map[string]*netWatch, ep *endpoint) {
 	n := ep.getNetwork()
 	if !c.isDistributedControl() && n.Scope() == datastore.SwarmScope && n.driverIsMultihost() {
 		return
 	}
 
+	networkID := n.ID()
+	endpointID := ep.ID()
+
 	c.Lock()
-	nw, ok := nmap[n.ID()]
+	nw, ok := nmap[networkID]
 
 	if ok {
-		delete(nw.localEps, ep.ID())
+		delete(nw.localEps, endpointID)
 		c.Unlock()
 
 		// Update the svc db about local endpoint leave right away
@@ -420,9 +424,9 @@ func (c *controller) processEndpointDelete(nmap map[string]*netWatch, ep *endpoi
 
 			// This is the last container going away for the network. Destroy
 			// this network's svc db entry
-			delete(c.svcRecords, n.ID())
+			delete(c.svcRecords, networkID)
 
-			delete(nmap, n.ID())
+			delete(nmap, networkID)
 		}
 	}
 	c.Unlock()
