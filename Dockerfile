@@ -216,7 +216,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
         PREFIX=/build /tmp/install/install.sh dockercli
 
 FROM runtime-dev AS runc
-ARG RUNC_VERSION
+ARG RUNC_VERSION=v1.1.12
 ARG RUNC_BUILDTAGS
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
